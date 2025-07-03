@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Security Operations Dashboard</title>
+    <!-- Google Fonts: Poppins for headings, Inter for body text -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <!-- Chart.js for charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* General Styling & Variables */
+      :root {
+        --primary-color: #3498db; /* Blue */
+        --secondary-color: #2ecc71; /* Green */
+        --accent-color: #f1c40f; /* Yellow */
+        --critical-color: #e74c3c; /* Red */
+        --high-color: #e67e22; /* Orange */
+        --medium-color: #f1c40f; /* Yellow */
+        --low-color: #2ecc71; /* Green */
+        --dark-bg: #2c3e50; /* Dark Blue Gray */
+        --card-bg: #34495e; /* Medium Blue Gray */
+        --text-color: #ecf0f1;
+        --heading-color: #ffffff;
+        --border-radius-sm: 8px;
+        --border-radius-md: 12px;
+        --border-radius-lg: 16px;
+        --shadow-light: 0 4px 8px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      /* CSS Reset */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: var(--dark-bg);
+        min-height: 100vh;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background-color: #1a2a3a;
+        padding: 20px 30px;
+        box-shadow: var(--shadow-md);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1000;
+      }
+      .header-title {
+        font-family: "Poppins", sans-serif;
+        font-size: 2em;
+        font-weight: 800;
+        color: var(--heading-color);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .header-title i {
+        color: var(--secondary-color);
+      }
+      .logout-btn {
+        background-color: var(--critical-color);
+        color: white;
+        padding: 8px 15px;
+        border: none;
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .logout-btn:hover {
+        background-color: #c0392b;
+      }
+
+      .main-content {
+        flex-grow: 1;
+        padding: 30px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+      }
+
+      .card {
+        background-color: var(--card-bg);
+        padding: 25px;
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-light);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+      }
+      .card-title {
+        font-family: "Poppins", sans-serif;
+        font-size: 1.5em;
+        font-weight: 700;
+        color: var(--heading-color);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .card-title i {
+        color: var(--primary-color);
+      }
+
+      /* Summary Cards */
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .summary-card {
+        background-color: #4a6572; /* Slightly different dark bg */
+        padding: 15px;
+        border-radius: var(--border-radius-sm);
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+      }
+      .summary-card-value {
+        font-size: 2.2em;
+        font-weight: 800;
+        color: var(--heading-color);
+        margin-bottom: 5px;
+      }
+      .summary-card-label {
+        font-size: 0.9em;
+        color: #bdc3c7;
+      }
+      .summary-card.critical .summary-card-value {
+        color: var(--critical-color);
+      }
+      .summary-card.high .summary-card-value {
+        color: var(--high-color);
+      }
+
+      /* Chart Cards */
+      .chart-card {
+        grid-column: span 1; /* Default to 1 column */
+        height: 400px; /* Fixed height for charts */
+      }
+      .chart-card canvas {
+        max-height: 100%; /* Ensure canvas fits in container */
+      }
+
+      /* Alerts Card */
+      .alerts-card {
+        grid-column: span 1; /* Default to 1 column */
+      }
+      .alert-item {
+        background-color: #555;
+        padding: 12px;
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95em;
+        border-left: 5px solid;
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      .alert-item.critical {
+        border-left-color: var(--critical-color);
+        background-color: rgba(231, 76, 60, 0.1);
+      }
+      .alert-item.high {
+        border-left-color: var(--high-color);
+        background-color: rgba(230, 126, 34, 0.1);
+      }
+      .alert-item.medium {
+        border-left-color: var(--medium-color);
+        background-color: rgba(241, 196, 15, 0.1);
+      }
+      .alert-item.low {
+        border-left-color: var(--low-color);
+        background-color: rgba(46, 204, 113, 0.1);
+      }
+      .alert-item i {
+        font-size: 1.2em;
+      }
+      .alert-item .alert-timestamp {
+        font-size: 0.8em;
+        color: #bdc3c7;
+        margin-left: auto;
+      }
+
+      /* Event Log Table */
+      .event-log-card {
+        grid-column: span 2; /* Spans 2 columns on larger screens */
+        overflow-x: auto; /* Enable horizontal scrolling for table */
+      }
+      .event-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+      .event-table th,
+      .event-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: left;
+        white-space: nowrap; /* Prevent text wrapping in cells */
+      }
+      .event-table th {
+        background-color: #4a6572;
+        color: var(--heading-color);
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: uppercase;
+      }
+      .event-table td {
+        font-size: 0.95em;
+        color: #bdc3c7;
+      }
+      .event-table tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+      .severity-low {
+        color: var(--low-color);
+        font-weight: 600;
+      }
+      .severity-medium {
+        color: var(--medium-color);
+        font-weight: 600;
+      }
+      .severity-high {
+        color: var(--high-color);
+        font-weight: 600;
+      }
+      .severity-critical {
+        color: var(--critical-color);
+        font-weight: 600;
+      }
+
+      /* Filters */
+      .filters-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+      }
+      .filters-container label {
+        font-weight: 600;
+      }
+      .filters-container select {
+        padding: 8px 12px;
+        border-radius: var(--border-radius-sm);
+        border: 1px solid #555;
+        background-color: #444;
+        color: var(--text-color);
+        font-size: 0.95em;
+        cursor: pointer;
+        appearance: none; /* Remove default arrow */
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ecf0f1%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13.2-6.4H18.6c-5%200-9.3%201.8-13.2%206.4-3.9%204.6-5.8%2010.5-5.8%2017.4v14.4c0%206.9%201.9%2012.8%205.8%2017.4l128%20128c3.9%204.6%209%206.9%2015.2%206.9s11.3-2.3%2015.2-6.9l128-128c3.9-4.6%205.8-10.5%205.8-17.4V86.8c-.1-6.9-2-12.8-5.9-17.4z%22%2F%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 12px;
+        padding-right: 30px;
+      }
+      .filters-container select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+      }
+      .filters-container button {
+        padding: 8px 15px;
+        margin-top: 0;
+        font-size: 0.95em;
+        border-radius: var(--border-radius-sm);
+        background-color: var(--primary-color);
+        color: white;
+      }
+      .filters-container button:hover {
+        background-color: #2980b9;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* Loading/Error Overlay */
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        flex-direction: column;
+        gap: 20px;
+        color: white;
+        font-size: 1.5em;
+        font-weight: 600;
+      }
+      .overlay i {
+        font-size: 3em;
+        color: var(--secondary-color);
+      }
+      .overlay.hidden {
+        display: none;
+      }
+
+      /* Responsive Design */
+      @media (min-width: 1024px) {
+        /* Adjust grid for larger screens */
+        .main-content {
+          grid-template-columns: 2fr 1fr; /* Main content left, charts/alerts right */
+        }
+        .event-log-card {
+          grid-column: span 2; /* Table spans full width on large screens */
+        }
+        .chart-card.full-width {
+          /* For charts that might span full width */
+          grid-column: span 2;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .header-title {
+          font-size: 1.5em;
+        }
+        .main-content {
+          padding: 20px;
+          grid-template-columns: 1fr; /* Single column on smaller screens */
+        }
+        .event-log-card {
+          grid-column: span 1;
+        }
+        .filters-container {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .filters-container select,
+        .filters-container button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay hidden" id="loadingOverlay">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Loading Dashboard Data...</p>
+    </div>
+
+    <div class="header">
+      <div class="header-title">
+        <i class="fas fa-shield-alt"></i>
+        Security Dashboard
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn"
+        >Logout <i class="fas fa-sign-out-alt"></i
+      ></a>
+    </div>
+
+    <div class="main-content">
+      <!-- Summary Section -->
+      <div class="card summary-section">
+        <h2 class="card-title"><i class="fas fa-chart-pie"></i> Overview</h2>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-card-value" id="totalEvents">0</div>
+            <div class="summary-card-label">Total Events</div>
+          </div>
+          <div class="summary-card critical">
+            <div class="summary-card-value" id="criticalEvents">0</div>
+            <div class="summary-card-label">Critical Alerts</div>
+          </div>
+          <div class="summary-card high">
+            <div class="summary-card-value" id="highEvents">0</div>
+            <div class="summary-card-label">High Severity</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Events by Type Chart -->
+      <div class="card chart-card">
+        <h2 class="card-title">
+          <i class="fas fa-chart-bar"></i> Events by Type
+        </h2>
+        <canvas id="eventsByTypeChart"></canvas>
+      </div>
+
+      <!-- Events by Severity Chart -->
+      <div class="card chart-card">
+        <h2 class="card-title">
+          <i class="fas fa-exclamation-triangle"></i> Events by Severity
+        </h2>
+        <canvas id="eventsBySeverityChart"></canvas>
+      </div>
+
+      <!-- Top Attacking IPs Chart -->
+      <div class="card chart-card">
+        <h2 class="card-title">
+          <i class="fas fa-map-marker-alt"></i> Top Attacking IPs
+        </h2>
+        <canvas id="topAttackingIpsChart"></canvas>
+      </div>
+
+      <!-- Recent Critical Alerts -->
+      <div class="card alerts-card">
+        <h2 class="card-title">
+          <i class="fas fa-bell"></i> Recent Critical Alerts
+        </h2>
+        <div id="criticalAlertsList">
+          <!-- Alerts will be loaded here -->
+          <p style="text-align: center; color: #bdc3c7">No critical alerts.</p>
+        </div>
+      </div>
+
+      <!-- Event Log Table -->
+      <div class="card event-log-card">
+        <h2 class="card-title"><i class="fas fa-list"></i> Event Log</h2>
+        <div class="filters-container">
+          <label for="filterSeverity">Severity:</label>
+          <select id="filterSeverity">
+            <option value="">All</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <label for="filterType">Type:</label>
+          <select id="filterType">
+            <option value="">All</option>
+            <option value="Login Attempt">Login Attempt</option>
+            <option value="File Access">File Access</option>
+            <option value="Network Scan">Network Scan</option>
+            <option value="Malware Detected">Malware Detected</option>
+            <option value="Firewall Block">Firewall Block</option>
+            <option value="System Alert">System Alert</option>
+            <option value="Unauthorized Access">Unauthorized Access</option>
+          </select>
+          <button id="applyFilters">Apply Filters</button>
+        </div>
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>Source IP</th>
+              <th>User</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="eventTableBody">
+            <!-- Event data will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const totalEventsElem = document.getElementById("totalEvents");
+      const criticalEventsElem = document.getElementById("criticalEvents");
+      const highEventsElem = document.getElementById("highEvents");
+      const eventsByTypeChartCanvas =
+        document.getElementById("eventsByTypeChart");
+      const eventsBySeverityChartCanvas = document.getElementById(
+        "eventsBySeverityChart"
+      );
+      const topAttackingIpsChartCanvas = document.getElementById(
+        "topAttackingIpsChart"
+      );
+      const criticalAlertsList = document.getElementById("criticalAlertsList");
+      const eventTableBody = document.getElementById("eventTableBody");
+      const filterSeverity = document.getElementById("filterSeverity");
+      const filterType = document.getElementById("filterType");
+      const applyFiltersButton = document.getElementById("applyFilters");
+
+      let allEventsData = []; // Store all events for filtering
+
+      // Declare Chart instances globally but initialize them when data is ready
+      let eventsByTypeChartInstance = null;
+      let eventsBySeverityChartInstance = null;
+      let topAttackingIpsChartInstance = null;
+
+      // Function to fetch data from backend API
+      async function fetchDashboardData() {
+        loadingOverlay.classList.remove("hidden");
+        try {
+          const response = await fetch("/api/security_data");
+          if (response.status === 401) {
+            window.location.href = "/login"; // Redirect to login if unauthorized
+            return;
+          }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+
+          allEventsData = data.events; // Store all events for filtering
+
+          updateSummaryCards(data.summary);
+          updateCharts(data.charts);
+          updateCriticalAlerts(data.alerts);
+          populateEventTable(data.events); // Populate table with all events initially
+        } catch (error) {
+          console.error("Error fetching dashboard data:", error);
+          alert(
+            "Failed to load dashboard data. Please log in again or check server status."
+          );
+          window.location.href = "/login"; // Redirect on severe error
+        } finally {
+          loadingOverlay.classList.add("hidden");
+        }
+      }
+
+      // Function to update summary cards
+      function updateSummaryCards(summary) {
+        totalEventsElem.textContent = summary.total_events;
+        criticalEventsElem.textContent = summary.critical_count;
+        highEventsElem.textContent = summary.high_count;
+      }
+
+      // Function to update charts
+      function updateCharts(chartsData) {
+        // Events by Type Chart
+        if (eventsByTypeChartInstance) eventsByTypeChartInstance.destroy();
+        eventsByTypeChartInstance = new Chart(eventsByTypeChartCanvas, {
+          type: "bar",
+          data: {
+            labels: Object.keys(chartsData.events_by_type),
+            datasets: [
+              {
+                label: "Number of Events",
+                data: Object.values(chartsData.events_by_type),
+                backgroundColor: [
+                  "rgba(52, 152, 219, 0.8)" /* primary blue */,
+                  "rgba(46, 204, 113, 0.8)" /* secondary green */,
+                  "rgba(241, 196, 15, 0.8)" /* accent yellow */,
+                  "rgba(231, 76, 60, 0.8)" /* critical red */,
+                  "rgba(230, 126, 34, 0.8)" /* high orange */,
+                  "rgba(149, 165, 166, 0.8)" /* gray */,
+                ],
+                borderColor: [
+                  "rgba(52, 152, 219, 1)",
+                  "rgba(46, 204, 113, 1)",
+                  "rgba(241, 196, 15, 1)",
+                  "rgba(231, 76, 60, 1)",
+                  "rgba(230, 126, 34, 1)",
+                  "rgba(149, 165, 166, 1)",
+                ],
+                borderWidth: 1,
+                borderRadius: 5,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: "Events by Type",
+                color: "white",
+                font: { size: 16 },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: "white" },
+                grid: { color: "rgba(255,255,255,0.1)" },
+              },
+              y: {
+                ticks: { color: "white" },
+                grid: { color: "rgba(255,255,255,0.1)" },
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        // Events by Severity Chart
+        if (eventsBySeverityChartInstance)
+          eventsBySeverityChartInstance.destroy();
+        eventsBySeverityChartInstance = new Chart(eventsBySeverityChartCanvas, {
+          type: "pie",
+          data: {
+            labels: Object.keys(chartsData.events_by_severity),
+            datasets: [
+              {
+                label: "Events by Severity",
+                data: Object.values(chartsData.events_by_severity),
+                backgroundColor: [
+                  "rgba(231, 76, 60, 0.8)" /* Critical Red */,
+                  "rgba(230, 126, 34, 0.8)" /* High Orange */,
+                  "rgba(241, 196, 15, 0.8)" /* Medium Yellow */,
+                  "rgba(46, 204, 113, 0.8)" /* Low Green */,
+                ],
+                borderColor: "rgba(52, 69, 94, 1)" /* card-bg color */,
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "right", labels: { color: "white" } },
+              title: {
+                display: true,
+                text: "Events by Severity",
+                color: "white",
+                font: { size: 16 },
+              },
+            },
+          },
+        });
+
+        // Top Attacking IPs Chart
+        if (topAttackingIpsChartInstance)
+          topAttackingIpsChartInstance.destroy();
+        topAttackingIpsChartInstance = new Chart(topAttackingIpsChartCanvas, {
+          type: "bar",
+          data: {
+            labels: Object.keys(chartsData.top_attacking_ips),
+            datasets: [
+              {
+                label: "Number of Incidents",
+                data: Object.values(chartsData.top_attacking_ips),
+                backgroundColor: "rgba(52, 152, 219, 0.8)",
+                borderColor: "rgba(52, 152, 219, 1)",
+                borderWidth: 1,
+                borderRadius: 5,
+              },
+            ],
+          },
+          options: {
+            indexAxis: "y", // Make it a horizontal bar chart
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: "Top Attacking IPs",
+                color: "white",
+                font: { size: 16 },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: "white" },
+                grid: { color: "rgba(255,255,255,0.1)" },
+              },
+              y: { ticks: { color: "white" }, grid: { display: false } },
+            },
+          },
+        });
+      }
+
+      // Function to update critical alerts list
+      function updateCriticalAlerts(alerts) {
+        criticalAlertsList.innerHTML = "";
+        if (alerts.length === 0) {
+          criticalAlertsList.innerHTML =
+            '<p style="text-align: center; color: #bdc3c7;">No critical alerts.</p>';
+          return;
+        }
+        alerts.forEach((alert) => {
+          const alertItem = document.createElement("div");
+          alertItem.classList.add("alert-item", alert.severity.toLowerCase());
+          alertItem.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>${alert.description}</span>
+                    <span class="alert-timestamp">${new Date(
+                      alert.timestamp
+                    ).toLocaleString()}</span>
+                `;
+          criticalAlertsList.appendChild(alertItem);
+        });
+      }
+
+      // Function to populate event log table
+      function populateEventTable(events) {
+        eventTableBody.innerHTML = "";
+        if (events.length === 0) {
+          eventTableBody.innerHTML =
+            '<tr><td colspan="6" style="text-align: center; color: #bdc3c7;">No events to display.</td></tr>';
+          return;
+        }
+        events.forEach((event) => {
+          const row = eventTableBody.insertRow();
+          row.innerHTML = `
+                    <td>${new Date(event.timestamp).toLocaleString()}</td>
+                    <td>${event.type}</td>
+                    <td class="severity-${event.severity.toLowerCase()}">${
+            event.severity
+          }</td>
+                    <td>${event.source_ip}</td>
+                    <td>${event.username}</td>
+                    <td>${event.description}</td>
+                `;
+        });
+      }
+
+      // Apply filters to the event log table
+      applyFiltersButton.addEventListener("click", () => {
+        const selectedSeverity = filterSeverity.value;
+        const selectedType = filterType.value;
+
+        const filteredEvents = allEventsData.filter((event) => {
+          const matchesSeverity =
+            selectedSeverity === "" || event.severity === selectedSeverity;
+          const matchesType =
+            selectedType === "" || event.type === selectedType;
+          return matchesSeverity && matchesType;
+        });
+        populateEventTable(filteredEvents);
+      });
+
+      // Initial data fetch when dashboard loads
+      document.addEventListener("DOMContentLoaded", fetchDashboardData);
+    </script>
+  </body>
+</html>

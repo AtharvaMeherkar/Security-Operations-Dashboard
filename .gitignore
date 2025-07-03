@@ -1,0 +1,11 @@
+# Python virtual environment
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Specific to this project
+dashboard_master_hash.txt # Contains master password hash 
